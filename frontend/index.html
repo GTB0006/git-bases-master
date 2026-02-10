@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barbería  💈 | Reserva</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #111827, #1f2933);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .app {
+            background: #ffffff;
+            width: 100%;
+            max-width: 420px;
+            min-height: 100vh;
+            padding: 20px;
+            border-radius: 0;
+        }
+
+        @media (min-width: 480px) {
+            .app {
+                min-height: auto;
+                border-radius: 18px;
+                box-shadow: 0 15px 40px rgba(0,0,0,.35);
+            }
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 12px;
+            display: block;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px;
+            margin-top: 6px;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            font-size: 15px;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 15px;
+            background: #111827;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:active {
+            transform: scale(.98);
+        }
+
+        .msg {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .ok {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #7f1d1d;
+        }
+
+        .divider {
+            margin: 25px 0 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .reserva {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .reserva strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <h1>💈 Barbería Blesseedbarbershop </h1>
+    <h1>💈 Calle 38 sur 34-22 Envigado </h1>
+    <div class="subtitle">  Reserva tu turno en segundos</div>
+
+    <label>Nombre</label>
+    <input id="nombre" placeholder="Ej: Juan Pérez">
+
+    <label>Teléfono</label>
+    <input id="telefono" placeholder="Ej: 3001234567">
+
+    <label>Cédula</label>
+    <input id="cedula" placeholder="Ej: 123456789">
+
+    <label>Barbero</label>
+    <select id="profesional">
+        <option value="">Selecciona un profesional</option>
+    </select>
+
+    <label>Fecha</label>
+    <input type="date" id="fecha">
+
+    <label>Hora</label>
+    <input type="time" id="hora">
+
+    <button onclick="reservar()">Reservar turno</button>
+
+    <div id="mensaje"></div>
+
+    <div class="divider"></div>
+
+    <h3>📅 Reservas</h3>
+    <div id="lista"></div>
+
+</div>
+
+<script>
+/* API automática (localhost / ngrok / dominio) */
+const API = window.location.origin;
+
+/* Fecha mínima = hoy */
+document.getElementById("fecha").min =
+    new Date().toISOString().split("T")[0];
+
+async function cargarProfesionales() {
+    const res = await fetch(`${API}/profesionales`);
+    const data = await res.json();
+    const select = document.getElementById("profesional");
+
+    data.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.profesional_id;
+        opt.textContent = p.nombre;
+        select.appendChild(opt);
+    });
+}
+
+async function reservar() {
+    const nombre = nombreInput();
+    const telefono = telefonoInput();
+    const cedula = cedulaInput();
+    const profesional = value("profesional");
+    const fecha = value("fecha");
+    const hora = value("hora");
+
+    const msg = document.getElementById("mensaje");
+    msg.innerHTML = "";
+    msg.className = "";
+
+    try {
+        if (!nombre || !telefono || !cedula || !profesional || !fecha || !hora)
+            throw { detail: "Completa todos los campos" };
+
+        const clienteRes = await fetch(
+            `${API}/clientes?nombre=${nombre}&telefono=${telefono}&cedula=${cedula}`,
+            { method: "POST" }
+        );
+        const clienteData = await clienteRes.json();
+
+        const params = new URLSearchParams({
+            cliente_id: clienteData.cliente_id,
+            profesional_id: profesional,
+            fecha,
+            hora
+        });
+
+        const res = await fetch(`${API}/reservas?${params}`, { method: "POST" });
+        const data = await res.json();
+
+        if (!res.ok) throw data;
+
+        msg.className = "msg ok";
+        msg.innerText = data.mensaje;
+
+        cargarReservas();
+
+    } catch (e) {
+        msg.className = "msg error";
+        msg.innerText = e.detail || "Error al crear reserva";
+    }
+}
+
+async function cargarReservas() {
+    const res = await fetch(`${API}/reservas`);
+    const data = await res.json();
+    const lista = document.getElementById("lista");
+    lista.innerHTML = "";
+
+    data.forEach(r => {
+        lista.innerHTML += `
+            <div class="reserva">
+                <strong>${r.cliente}</strong>
+                📞 ${r.telefono}<br>
+                ✂️ ${r.profesional}<br>
+                📅 ${r.fecha} ⏰ ${r.hora}
+            </div>
+        `;
+    });
+}
+
+/* Helpers */
+const value = id => document.getElementById(id).value;
+const nombreInput = () => value("nombre").trim();
+const telefonoInput = () => value("telefono").trim();
+const cedulaInput = () => value("cedula").trim();
+
+cargarProfesionales();
+cargarReservas();
+</script>
+
+</body>
+</html>
