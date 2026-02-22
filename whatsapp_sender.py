@@ -1,54 +1,72 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+import os
+import urllib.parse
 import time
-
-_driver = None
-
-
-def iniciar_whatsapp():
-    global _driver
-
-    if _driver:
-        return _driver
-
-    options = webdriver.ChromeOptions()
-    options.add_argument("--user-data-dir=C:/whatsapp_profile")
-    options.add_argument("--profile-directory=Default")
-
-    _driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=options
-    )
-
-    _driver.get("https://web.whatsapp.com")
-    time.sleep(20)  # tiempo real para que cargue WhatsApp
-
-    return _driver
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
-def enviar_mensaje(numero, mensaje):
-    driver = iniciar_whatsapp()
+class WhatsAppSender:
 
-    url = f"https://web.whatsapp.com/send?phone={numero}&text={mensaje}"
-    driver.get(url)
+    def __init__(self):
 
-    time.sleep(10)
+        chrome_options = Options()
 
-    try:
-        # 🟢 BOTÓN ENVIAR (WhatsApp cambia iconos, este selector funciona)
-        boton_enviar = driver.find_element(
-            By.XPATH,
-            '//button[@aria-label="Enviar"]'
+        profile_path = os.path.abspath("chrome-data")
+
+        if not os.path.exists(profile_path):
+            os.makedirs(profile_path)
+
+        chrome_options.add_argument(f"--user-data-dir={profile_path}")
+        chrome_options.add_argument("--profile-directory=Default")
+        chrome_options.add_argument("--start-maximized")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+
+        self.driver = webdriver.Chrome(options=chrome_options)
+        self.wait = WebDriverWait(self.driver, 40)
+
+        print("Abriendo WhatsApp Web...")
+        self.driver.get("https://web.whatsapp.com")
+
+        self.wait.until(
+            EC.presence_of_element_located((By.ID, "side"))
         )
 
-        # 🚀 CLICK REAL vía JavaScript
-        driver.execute_script("arguments[0].click();", boton_enviar)
+        print("WhatsApp listo")
 
-        print("✅ WhatsApp enviado correctamente")
-        time.sleep(2)
+    def enviar_mensaje(self, numero, mensaje):
 
-    except Exception as e:
-        print("❌ Error enviando WhatsApp:", e)
+        try:
+            mensaje_encoded = urllib.parse.quote(mensaje)
 
+            url = f"https://web.whatsapp.com/send?phone=57{numero}&text={mensaje_encoded}"
+            self.driver.get(url)
+
+            # Esperar la caja editable
+            caja = self.wait.until(
+                EC.presence_of_element_located(
+                    (By.XPATH, '//div[@contenteditable="true"]')
+                )
+            )
+
+            # Forzar foco
+            caja.click()
+
+            time.sleep(1)
+
+            # Enviar con ENTER
+            caja.send_keys(Keys.ENTER)
+
+            print(f"Mensaje enviado a {numero}")
+
+        except Exception as e:
+            print("Error enviando mensaje:", e)
+
+    def cerrar(self):
+        self.driver.quit()
+        print("Navegador cerrado")
