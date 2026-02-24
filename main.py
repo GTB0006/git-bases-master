@@ -8,6 +8,8 @@ import pyodbc
 import os
 
 from whatsapp_sender import WhatsAppSender
+from email_sender import EmailSender
+from calendar_sender import CalendarSender
 
 app = FastAPI(title="API Barbería")
 
@@ -19,10 +21,12 @@ app.add_middleware(
 )
 
 # ======================================================
-# INICIAR WHATSAPP UNA SOLA VEZ
+# INICIAR SERVICIOS
 # ======================================================
 
 whatsapp = None
+email_sender = EmailSender()
+calendar_sender = CalendarSender()
 
 @app.on_event("startup")
 def startup_event():
@@ -66,7 +70,7 @@ HORA_CIERRE = time(22, 0)
 # ======================================================
 
 @app.post("/clientes")
-def crear_o_obtener_cliente(nombre: str, telefono: str, cedula: str):
+def crear_o_obtener_cliente(nombre: str, telefono: str, cedula: str, correo: str):
 
     conn = get_connection()
     try:
@@ -82,10 +86,10 @@ def crear_o_obtener_cliente(nombre: str, telefono: str, cedula: str):
             return {"cliente_id": row[0]}
 
         cursor.execute("""
-            INSERT INTO Clientes (Nombre, Telefono, Cedula)
+            INSERT INTO Clientes (Nombre, Telefono, Cedula, Correo)
             OUTPUT INSERTED.ClienteId
-            VALUES (?, ?, ?)
-        """, (nombre, telefono, cedula))
+            VALUES (?, ?, ?, ?)
+        """, (nombre, telefono, cedula, correo))
 
         cliente_id = cursor.fetchone()[0]
         conn.commit()
@@ -157,15 +161,15 @@ def crear_reserva(cliente_id: int, profesional_id: int, fecha: str, hora: str):
                 detail="Horario ya ocupado"
             )
 
-        # Obtener datos
+        # Obtener datos completos
         cursor.execute("""
-            SELECT C.Nombre, C.Telefono, P.Nombre
+            SELECT C.Nombre, C.Telefono, C.Correo, P.Nombre
             FROM Clientes C
             JOIN Profesionales P ON P.ProfesionalId = ?
             WHERE C.ClienteId = ?
         """, (profesional_id, cliente_id))
 
-        cliente, telefono, profesional = cursor.fetchone()
+        cliente, telefono, correo, profesional = cursor.fetchone()
 
         mensaje = (
             f"Hola {cliente} 👋\n"
@@ -176,9 +180,19 @@ def crear_reserva(cliente_id: int, profesional_id: int, fecha: str, hora: str):
             f"Te esperamos 💈"
         )
 
-        # 🔥 ENVÍA WHATSAPP DESDE EL PORTÁTIL
+        # 🔥 WHATSAPP
         if whatsapp:
             whatsapp.enviar_mensaje(telefono, mensaje)
+
+        # 🔥 EMAIL
+        email_sender.enviar_confirmacion(
+            correo, cliente, fecha, hora, profesional
+        )
+
+        # 🔥 CALENDARIO
+        calendar_sender.crear_evento(
+            correo, cliente, fecha, hora, profesional
+        )
 
         return {"mensaje": "Reserva creada correctamente"}
 
@@ -197,7 +211,7 @@ def listar_reservas():
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT C.Nombre, C.Telefono, P.Nombre, R.Fecha, R.Hora
+            SELECT C.Nombre, C.Telefono, C.Correo, P.Nombre, R.Fecha, R.Hora
             FROM Reservas R
             JOIN Clientes C ON R.ClienteId = C.ClienteId
             JOIN Profesionales P ON R.ProfesionalId = P.ProfesionalId
@@ -208,14 +222,13 @@ def listar_reservas():
             {
                 "cliente": r[0],
                 "telefono": r[1],
-                "profesional": r[2],
-                "fecha": str(r[3]),
-                "hora": str(r[4])
+                "correo": r[2],
+                "profesional": r[3],
+                "fecha": str(r[4]),
+                "hora": str(r[5])
             }
             for r in cursor.fetchall()
         ]
 
     finally:
         conn.close()
-
-

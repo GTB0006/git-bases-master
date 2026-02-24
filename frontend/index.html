@@ -134,6 +134,9 @@ button {
 <label>Cédula</label>
 <input id="cedula">
 
+<label>Correo</label>
+<input id="correo" type="email" value="camilo0282007@gmail.com">
+
 <label>Barbero</label>
 <select id="profesional" onchange="mostrarImagenProfesional()">
     <option value="">Selecciona un profesional</option>
@@ -198,6 +201,7 @@ async function reservar() {
     const nombre = value("nombre");
     const telefono = value("telefono");
     const cedula = value("cedula");
+    const correo = value("correo");
     const profesional = value("profesional");
     const fecha = value("fecha");
     const hora = value("hora");
@@ -209,7 +213,7 @@ async function reservar() {
     try {
 
         const clienteRes = await fetch(
-            `${API}/clientes?nombre=${nombre}&telefono=${telefono}&cedula=${cedula}`,
+            `${API}/clientes?nombre=${nombre}&telefono=${telefono}&cedula=${cedula}&correo=${correo}`,
             { method: "POST" }
         );
 
@@ -230,11 +234,6 @@ async function reservar() {
         msg.className = "msg ok";
         msg.innerText = data.mensaje;
 
-        // 🔥 AQUÍ SE ABRE WHATSAPP
-        if (data.whatsapp_url) {
-            window.open(data.whatsapp_url, "_blank");
-        }
-
         cargarReservas();
 
     } catch (e) {
@@ -254,6 +253,7 @@ async function cargarReservas() {
             <div class="reserva">
                 <strong>${r.cliente}</strong><br>
                 📞 ${r.telefono}<br>
+                📧 ${r.correo}<br>
                 ✂️ ${r.profesional}<br>
                 📅 ${r.fecha} ⏰ ${r.hora}
             </div>
