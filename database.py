@@ -1,9 +1,12 @@
-import pyodbc
+import os
+import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+print("DATABASE_URL cargado:", DATABASE_URL)
 
 def get_connection():
-    return pyodbc.connect(
-        "Driver={ODBC Driver 17 for SQL Server};"
-        "Server=CJMPINEDA\\SQLEXPRESS;"
-        "Database=BarberiaDB;"
-        "Trusted_Connection=yes;"
-    )
+    return psycopg2.connect(DATABASE_URL)

@@ -4,14 +4,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from database import get_connection
 from datetime import datetime, time
-import pyodbc
 import os
+from dotenv import load_dotenv
 
-from whatsapp_sender import WhatsAppSender
+load_dotenv()
+
+#from whatsapp_sender import WhatsAppSender
 from email_sender import EmailSender
 from calendar_sender import CalendarSender
 
-app = FastAPI(title="API Barbería")
+app = FastAPI(title="API Barbería SaaS")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,24 +23,36 @@ app.add_middleware(
 )
 
 # ======================================================
+# TEST CONEXION BD
+# ======================================================
+
+@app.get("/test-db")
+def test_db():
+    try:
+        conn = get_connection()
+        conn.close()
+        return {"status": "Conectado correctamente a PostgreSQL"}
+    except Exception as e:
+        return {"error": str(e)}
+
+# ======================================================
 # INICIAR SERVICIOS
 # ======================================================
 
-whatsapp = None
+#whatsapp = None
 email_sender = EmailSender()
 calendar_sender = CalendarSender()
 
-@app.on_event("startup")
-def startup_event():
-    global whatsapp
-    print("Iniciando servicio de WhatsApp...")
-    whatsapp = WhatsAppSender()
+#@app.on_event("startup")
+#def startup_event():
+ #   global whatsapp
+  #  whatsapp = WhatsAppSender()
 
-@app.on_event("shutdown")
-def shutdown_event():
-    global whatsapp
-    if whatsapp:
-        whatsapp.cerrar()
+#@app.on_event("shutdown")
+#def shutdown_event():
+ #   global whatsapp
+  #  if whatsapp:
+   #     whatsapp.cerrar()
 
 # ======================================================
 # ESTÁTICOS
@@ -66,61 +80,29 @@ HORA_APERTURA = time(9, 0)
 HORA_CIERRE = time(22, 0)
 
 # ======================================================
-# CLIENTES
+# LISTAR BARBEROS POR BARBERIA
 # ======================================================
 
-@app.post("/clientes")
-def crear_o_obtener_cliente(nombre: str, telefono: str, cedula: str, correo: str):
-
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "SELECT ClienteId FROM Clientes WHERE Cedula = ?",
-            (cedula,)
-        )
-        row = cursor.fetchone()
-
-        if row:
-            return {"cliente_id": row[0]}
-
-        cursor.execute("""
-            INSERT INTO Clientes (Nombre, Telefono, Cedula, Correo)
-            OUTPUT INSERTED.ClienteId
-            VALUES (?, ?, ?, ?)
-        """, (nombre, telefono, cedula, correo))
-
-        cliente_id = cursor.fetchone()[0]
-        conn.commit()
-
-        return {"cliente_id": cliente_id}
-
-    finally:
-        conn.close()
-
-# ======================================================
-# PROFESIONALES
-# ======================================================
-
-@app.get("/profesionales")
-def listar_profesionales():
+@app.get("/barberos/{barberia_id}")
+def listar_barberos(barberia_id: int):
 
     conn = get_connection()
     try:
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT ProfesionalId, Nombre, Imagen
-            FROM Profesionales
-            WHERE Activo = 1
-        """)
+            SELECT id, nombre, horario_inicio, horario_fin
+            FROM barberos
+            WHERE barberia_id = %s
+            AND activo = TRUE
+        """, (barberia_id,))
 
         return [
             {
-                "profesional_id": r[0],
+                "barbero_id": r[0],
                 "nombre": r[1],
-                "imagen": r[2]
+                "horario_inicio": str(r[2]),
+                "horario_fin": str(r[3])
             }
             for r in cursor.fetchall()
         ]
@@ -129,11 +111,18 @@ def listar_profesionales():
         conn.close()
 
 # ======================================================
-# RESERVAS
+# CREAR RESERVA (SaaS Multi-tenant)
 # ======================================================
 
 @app.post("/reservas")
-def crear_reserva(cliente_id: int, profesional_id: int, fecha: str, hora: str):
+def crear_reserva(
+    barberia_id: int,
+    barbero_id: int,
+    cliente_nombre: str,
+    cliente_email: str,
+    fecha: str,
+    hora: str
+):
 
     conn = get_connection()
     try:
@@ -147,32 +136,47 @@ def crear_reserva(cliente_id: int, profesional_id: int, fecha: str, hora: str):
                 detail="Horario fuera del rango permitido"
             )
 
-        try:
-            cursor.execute("""
-                INSERT INTO Reservas (ClienteId, ProfesionalId, Fecha, Hora)
-                VALUES (?, ?, ?, ?)
-            """, (cliente_id, profesional_id, fecha, hora_inicio))
+        # Verificar si ya está ocupado
+        cursor.execute("""
+            SELECT id FROM reservas
+            WHERE barberia_id = %s
+            AND barbero_id = %s
+            AND fecha = %s
+            AND hora = %s
+        """, (barberia_id, barbero_id, fecha, hora))
 
-            conn.commit()
-
-        except pyodbc.IntegrityError:
+        if cursor.fetchone():
             raise HTTPException(
                 status_code=400,
                 detail="Horario ya ocupado"
             )
 
-        # Obtener datos completos
+        # Insertar reserva
         cursor.execute("""
-            SELECT C.Nombre, C.Telefono, C.Correo, P.Nombre
-            FROM Clientes C
-            JOIN Profesionales P ON P.ProfesionalId = ?
-            WHERE C.ClienteId = ?
-        """, (profesional_id, cliente_id))
+            INSERT INTO reservas
+            (barberia_id, barbero_id, cliente_nombre, cliente_email, fecha, hora)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            barberia_id,
+            barbero_id,
+            cliente_nombre,
+            cliente_email,
+            fecha,
+            hora
+        ))
 
-        cliente, telefono, correo, profesional = cursor.fetchone()
+        conn.commit()
+
+        # Obtener nombre del barbero
+        cursor.execute("""
+            SELECT nombre FROM barberos
+            WHERE id = %s
+        """, (barbero_id,))
+
+        profesional = cursor.fetchone()[0]
 
         mensaje = (
-            f"Hola {cliente} 👋\n"
+            f"Hola {cliente_nombre} 👋\n"
             f"Tu reserva fue confirmada\n"
             f"Barbero: {profesional}\n"
             f"Fecha: {fecha}\n"
@@ -180,18 +184,27 @@ def crear_reserva(cliente_id: int, profesional_id: int, fecha: str, hora: str):
             f"Te esperamos 💈"
         )
 
-        # 🔥 WHATSAPP
-        if whatsapp:
-            whatsapp.enviar_mensaje(telefono, mensaje)
+        # WhatsApp
+        #if whatsapp:
+            # aquí deberías pedir teléfono si lo quieres usar
+         #   pass
 
-        # 🔥 EMAIL
+        # Email
         email_sender.enviar_confirmacion(
-            correo, cliente, fecha, hora, profesional
+            cliente_email,
+            cliente_nombre,
+            fecha,
+            hora,
+            profesional
         )
 
-        # 🔥 CALENDARIO
+        # Calendar
         calendar_sender.crear_evento(
-            correo, cliente, fecha, hora, profesional
+            cliente_email,
+            cliente_nombre,
+            fecha,
+            hora,
+            profesional
         )
 
         return {"mensaje": "Reserva creada correctamente"}
@@ -200,32 +213,29 @@ def crear_reserva(cliente_id: int, profesional_id: int, fecha: str, hora: str):
         conn.close()
 
 # ======================================================
-# LISTAR RESERVAS
+# LISTAR RESERVAS POR BARBERIA
 # ======================================================
 
-@app.get("/reservas")
-def listar_reservas():
+@app.get("/reservas/{barberia_id}")
+def listar_reservas(barberia_id: int):
 
     conn = get_connection()
     try:
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT C.Nombre, C.Telefono, C.Correo, P.Nombre, R.Fecha, R.Hora
-            FROM Reservas R
-            JOIN Clientes C ON R.ClienteId = C.ClienteId
-            JOIN Profesionales P ON R.ProfesionalId = P.ProfesionalId
-            ORDER BY R.Fecha, R.Hora
-        """)
+            SELECT cliente_nombre, cliente_email, fecha, hora
+            FROM reservas
+            WHERE barberia_id = %s
+            ORDER BY fecha, hora
+        """, (barberia_id,))
 
         return [
             {
                 "cliente": r[0],
-                "telefono": r[1],
-                "correo": r[2],
-                "profesional": r[3],
-                "fecha": str(r[4]),
-                "hora": str(r[5])
+                "correo": r[1],
+                "fecha": str(r[2]),
+                "hora": str(r[3])
             }
             for r in cursor.fetchall()
         ]

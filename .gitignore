@@ -3,3 +3,5 @@ __pycache__/
 chrome-data/
 whatsapp_profile/
 credentials.json
+.env
+whatsapp_sender.py
