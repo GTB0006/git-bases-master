@@ -1,25 +1,22 @@
+import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-
 class CalendarSender:
-
     def __init__(self):
-
         self.SCOPES = ['https://www.googleapis.com/auth/calendar']
-
+        
+        # En local usa el archivo, en Render lo leerá del Secret File
         self.credentials = service_account.Credentials.from_service_account_file(
             'credentials.json',
             scopes=self.SCOPES
         )
-
         self.service = build('calendar', 'v3', credentials=self.credentials)
-
-        self.calendar_id = 'cristiancrjm19@gmail.com'
-
-        # Zona horaria oficial
+        
+        # ID del calendario dinámico
+        self.calendar_id = os.getenv("CALENDAR_ID", "blessedbarbershopenv@gmail.com")
         self.timezone = ZoneInfo("America/Bogota")
 
 
