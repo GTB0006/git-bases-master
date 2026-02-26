@@ -22,11 +22,14 @@ app.add_middleware(
 )
 
 # ======================================================
-# INICIAR SERVICIOS
+# INICIAR SERVICIOS Y CONFIGURACIÓN
 # ======================================================
 
 email_sender = EmailSender()
 calendar_sender = CalendarSender()
+
+HORA_APERTURA = time(9, 0)
+HORA_CIERRE = time(22, 0)
 
 # ======================================================
 # ESTÁTICOS
@@ -55,7 +58,6 @@ def listar_barberos(barberia_id: int):
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        # Forzamos los nombres de columnas según tus capturas de pantalla
         query = """
             SELECT id, nombre, horario_inicio, horario_fin, foto_url 
             FROM barberos 
@@ -75,7 +77,6 @@ def listar_barberos(barberia_id: int):
             })
         return resultado
     except Exception as e:
-        # Esto nos dirá en los logs de Render qué falló exactamente
         print(f"ERROR CRÍTICO: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -133,6 +134,9 @@ def crear_reserva(
 
         return {"mensaje": "¡Reserva creada con éxito!"}
 
+    except Exception as e:
+        print(f"ERROR AL RESERVAR: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
 
@@ -145,7 +149,6 @@ def listar_reservas(barberia_id: int):
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        # Hacemos JOIN con la tabla barberos para traer el nombre del barbero
         cursor.execute("""
             SELECT r.cliente_nombre, r.cliente_email, r.fecha, r.hora, b.nombre
             FROM reservas r
@@ -165,5 +168,7 @@ def listar_reservas(barberia_id: int):
             }
             for r in cursor.fetchall()
         ]
+    except Exception as e:
+        return []
     finally:
         conn.close()
