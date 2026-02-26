@@ -12,10 +12,8 @@
 }
 
 body {
-    background:
-        linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)),
-        url("/frontend/img/fondo.jpeg") no-repeat center center fixed;
-    background-size: cover;
+    /* El fondo se aplica vía JavaScript al final */
+    background-color: #111827; 
     margin: 0;
     min-height: 100vh;
     display: flex;
@@ -27,201 +25,146 @@ body {
     width: 100%;
     max-width: 420px;
     padding: 20px;
-    background: rgba(255,255,255,0.94);
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(10px);
 }
 
 @media (min-width: 768px) {
     .app {
         border-radius: 18px;
-        box-shadow: 0 20px 50px rgba(0,0,0,.4);
+        box-shadow: 0 20px 50px rgba(0,0,0,.5);
     }
 }
 
-h1 {
-    text-align: center;
-    margin-bottom: 5px;
-}
+h1 { text-align: center; margin-bottom: 5px; color: #111827; }
+.subtitle { text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 20px; }
+label { font-size: 13px; font-weight: 600; margin-top: 12px; display: block; }
+input, select { width: 100%; padding: 14px; margin-top: 6px; border-radius: 10px; border: 1px solid #d1d5db; font-size: 15px; }
+button { margin-top: 25px; width: 100%; padding: 15px; background: #111827; color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+button:hover { background: #374151; }
 
-.subtitle {
-    text-align: center;
-    color: #6b7280;
-    font-size: 14px;
-    margin-bottom: 20px;
-}
+.msg { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 14px; text-align: center; }
+.ok { background: #dcfce7; color: #166534; }
+.error { background: #fee2e2; color: #7f1d1d; }
 
-label {
-    font-size: 13px;
-    font-weight: 600;
-    margin-top: 12px;
-    display: block;
-}
+.reserva { background: #f3f4f6; border-radius: 10px; padding: 12px; margin-bottom: 10px; font-size: 14px; border-left: 4px solid #111827; }
 
-input, select {
-    width: 100%;
-    padding: 14px;
-    margin-top: 6px;
-    border-radius: 10px;
-    border: 1px solid #d1d5db;
-    font-size: 15px;
-}
-
-button {
-    margin-top: 20px;
-    width: 100%;
-    padding: 15px;
-    background: #111827;
-    color: white;
-    border: none;
-    border-radius: 14px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.msg {
-    margin-top: 15px;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 14px;
-    text-align: center;
-}
-
-.ok {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.error {
-    background: #fee2e2;
-    color: #7f1d1d;
-}
-
-.reserva {
-    background: #f9fafb;
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 10px;
-    font-size: 14px;
-}
-
-.prof-preview {
-    text-align: center;
-    margin-top: 10px;
-}
-
-.prof-preview img {
-    width: 90px;
-    height: 90px;
-    border-radius: 12px;
-    object-fit: cover;
-}
+.prof-preview { text-align: center; margin-top: 15px; min-height: 100px; }
+.prof-preview img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #111827; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 </style>
 </head>
 
 <body>
 
 <div class="app">
+    <h1>💈 Blessed Barbershop</h1>
+    <div class="subtitle">📍 Calle 38 sur 34-22 Envigado</div>
 
-<h1>💈 Blesseedbarbershop</h1>
-<div class="subtitle">📍 Calle 38 sur 34-22 Envigado</div>
+    <label>Nombre Completo</label>
+    <input id="nombre" placeholder="Ej: Juan Pérez">
 
-<label>Nombre</label>
-<input id="nombre">
+    <label>Teléfono</label>
+    <input id="telefono" placeholder="Ej: 3001234567">
 
-<label>Teléfono</label>
-<input id="telefono">
+    <label>Cédula</label>
+    <input id="cedula" placeholder="Documento de identidad">
 
-<label>Cédula</label>
-<input id="cedula">
+    <label>Correo Electrónico</label>
+    <input id="correo" type="email" value="camilo0282007@gmail.com">
 
-<label>Correo</label>
-<input id="correo" type="email" value="camilo0282007@gmail.com">
+    <label>Selecciona tu Barbero</label>
+    <select id="profesional" onchange="mostrarImagenProfesional()">
+        <option value="">Cargando profesionales...</option>
+    </select>
 
-<label>Barbero</label>
-<select id="profesional" onchange="mostrarImagenProfesional()">
-    <option value="">Selecciona un profesional</option>
-</select>
+    <div class="prof-preview" id="preview"></div>
 
-<div class="prof-preview" id="preview"></div>
+    <label>Fecha de la Cita</label>
+    <input type="date" id="fecha">
 
-<label>Fecha</label>
-<input type="date" id="fecha">
+    <label>Hora</label>
+    <input type="time" id="hora">
 
-<label>Hora</label>
-<input type="time" id="hora">
+    <button onclick="reservar()">Agendar Cita Ahora</button>
 
-<button onclick="reservar()">Reservar turno</button>
+    <div id="mensaje"></div>
 
-<div id="mensaje"></div>
+    <hr style="margin: 25px 0; border: 0; border-top: 1px solid #e5e7eb;">
 
-<hr>
-
-<h3>📅 Reservas</h3>
-<div id="lista"></div>
-
+    <h3>📅 Tus Próximas Reservas</h3>
+    <div id="lista"></div>
 </div>
 
 <script>
-
+// CONFIGURACIÓN DINÁMICA
 const API = window.location.origin;
+const URL_FONDO = "https://ntfqlkuhzoqvjtkfyvkr.supabase.co/storage/v1/object/public/barberos/fondo.jpeg";
 let profesionales = {};
 
-document.getElementById("fecha").min =
-    new Date().toISOString().split("T")[0];
+// Aplicar fondo dinámico
+document.body.style.background = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${URL_FONDO}') no-repeat center center fixed`;
+document.body.style.backgroundSize = "cover";
+
+// Bloquear fechas pasadas
+document.getElementById("fecha").min = new Date().toISOString().split("T")[0];
 
 function mostrarImagenProfesional() {
     const id = document.getElementById("profesional").value;
     const preview = document.getElementById("preview");
 
-    if (profesionales[id]) {
-        preview.innerHTML =
-            `<img src="/frontend/img/${profesionales[id].imagen}">`;
+    if (profesionales[id] && profesionales[id].foto_url) {
+        preview.innerHTML = `<img src="${profesionales[id].foto_url}" alt="Barbero">`;
     } else {
         preview.innerHTML = "";
     }
 }
 
 async function cargarProfesionales() {
-    const res = await fetch(`${API}/profesionales`);
-    const data = await res.json();
-    const select = document.getElementById("profesional");
+    try {
+        // Ajustamos la ruta para que coincida con tu API (usamos barberia_id 1 por defecto)
+        const res = await fetch(`${API}/barberos/1`); 
+        const data = await res.json();
+        const select = document.getElementById("profesional");
+        select.innerHTML = '<option value="">Selecciona un profesional</option>';
 
-    data.forEach(p => {
-        profesionales[p.profesional_id] = p;
-
-        const opt = document.createElement("option");
-        opt.value = p.profesional_id;
-        opt.textContent = p.nombre;
-        select.appendChild(opt);
-    });
+        data.forEach(p => {
+            profesionales[p.barbero_id] = p;
+            const opt = document.createElement("option");
+            opt.value = p.barbero_id;
+            opt.textContent = p.nombre;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        console.error("Error cargando profesionales:", e);
+    }
 }
 
 async function reservar() {
-
     const nombre = value("nombre");
     const telefono = value("telefono");
     const cedula = value("cedula");
     const correo = value("correo");
-    const profesional = value("profesional");
+    const profesional_id = value("profesional");
     const fecha = value("fecha");
     const hora = value("hora");
 
     const msg = document.getElementById("mensaje");
-    msg.innerHTML = "";
-    msg.className = "";
+    msg.innerHTML = "Procesando...";
+    msg.className = "msg";
 
     try {
-
+        // 1. Crear/Verificar Cliente
         const clienteRes = await fetch(
             `${API}/clientes?nombre=${nombre}&telefono=${telefono}&cedula=${cedula}&correo=${correo}`,
             { method: "POST" }
         );
-
         const clienteData = await clienteRes.json();
 
+        // 2. Crear Reserva
         const params = new URLSearchParams({
+            barberia_id: 1,
             cliente_id: clienteData.cliente_id,
-            profesional_id: profesional,
+            barbero_id: profesional_id,
             fecha,
             hora
         });
@@ -232,8 +175,7 @@ async function reservar() {
         if (!res.ok) throw data;
 
         msg.className = "msg ok";
-        msg.innerText = data.mensaje;
-
+        msg.innerText = "¡Reserva confirmada! Revisa tu correo.";
         cargarReservas();
 
     } catch (e) {
@@ -243,29 +185,30 @@ async function reservar() {
 }
 
 async function cargarReservas() {
-    const res = await fetch(`${API}/reservas`);
-    const data = await res.json();
-    const lista = document.getElementById("lista");
-    lista.innerHTML = "";
+    try {
+        const res = await fetch(`${API}/reservas/1`); // Consultar reservas de la barbería 1
+        const data = await res.json();
+        const lista = document.getElementById("lista");
+        lista.innerHTML = "";
 
-    data.forEach(r => {
-        lista.innerHTML += `
-            <div class="reserva">
-                <strong>${r.cliente}</strong><br>
-                📞 ${r.telefono}<br>
-                📧 ${r.correo}<br>
-                ✂️ ${r.profesional}<br>
-                📅 ${r.fecha} ⏰ ${r.hora}
-            </div>
-        `;
-    });
+        data.slice(0, 5).forEach(r => { // Mostrar las últimas 5
+            lista.innerHTML += `
+                <div class="reserva">
+                    <strong>👤 ${r.cliente}</strong><br>
+                    ✂️ Barbero: ${r.profesional}<br>
+                    📅 ${r.fecha} | ⏰ ${r.hora}
+                </div>
+            `;
+        });
+    } catch (e) {
+        console.log("Aún no hay reservas");
+    }
 }
 
 const value = id => document.getElementById(id).value;
 
 cargarProfesionales();
 cargarReservas();
-
 </script>
 </body>
 </html>
