@@ -6,7 +6,7 @@ class EmailSender:
     def __init__(self):
         # Lee de la variable de entorno, si no existe usa el valor por defecto
         self.email = os.getenv("EMAIL_USER", "blessedbarbershopenv@gmail.com")
-        self.password = os.getenv("EMAIL_PASSWORD", "dkkg sqhz izby ifyi") 
+        self.password = os.getenv("EMAIL_PASSWORD", "dkkgsqhzizbyifyi") 
 
     def enviar_confirmacion(self, correo_cliente, nombre, fecha, hora, profesional):
         msg = EmailMessage()
