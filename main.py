@@ -85,16 +85,13 @@ HORA_CIERRE = time(22, 0)
 
 @app.get("/barberos/{barberia_id}")
 def listar_barberos(barberia_id: int):
-
     conn = get_connection()
     try:
         cursor = conn.cursor()
-
         cursor.execute("""
-            SELECT id, nombre, horario_inicio, horario_fin
+            SELECT id, nombre, horario_inicio, horario_fin, foto_url
             FROM barberos
-            WHERE barberia_id = %s
-            AND activo = TRUE
+            WHERE barberia_id = %s AND activo = TRUE
         """, (barberia_id,))
 
         return [
@@ -102,14 +99,13 @@ def listar_barberos(barberia_id: int):
                 "barbero_id": r[0],
                 "nombre": r[1],
                 "horario_inicio": str(r[2]),
-                "horario_fin": str(r[3])
+                "horario_fin": str(r[3]),
+                "foto_url": r[4] # <-- Nueva línea
             }
             for r in cursor.fetchall()
         ]
-
     finally:
         conn.close()
-
 # ======================================================
 # CREAR RESERVA (SaaS Multi-tenant)
 # ======================================================
