@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-#from whatsapp_sender import WhatsAppSender
 from email_sender import EmailSender
 from calendar_sender import CalendarSender
 
@@ -23,36 +22,11 @@ app.add_middleware(
 )
 
 # ======================================================
-# TEST CONEXION BD
-# ======================================================
-
-@app.get("/test-db")
-def test_db():
-    try:
-        conn = get_connection()
-        conn.close()
-        return {"status": "Conectado correctamente a PostgreSQL"}
-    except Exception as e:
-        return {"error": str(e)}
-
-# ======================================================
 # INICIAR SERVICIOS
 # ======================================================
 
-#whatsapp = None
 email_sender = EmailSender()
 calendar_sender = CalendarSender()
-
-#@app.on_event("startup")
-#def startup_event():
- #   global whatsapp
-  #  whatsapp = WhatsAppSender()
-
-#@app.on_event("shutdown")
-#def shutdown_event():
- #   global whatsapp
-  #  if whatsapp:
-   #     whatsapp.cerrar()
 
 # ======================================================
 # ESTÁTICOS
@@ -73,11 +47,20 @@ def index():
     )
 
 # ======================================================
-# HORARIOS
+# HORARIOS Y TEST
 # ======================================================
 
 HORA_APERTURA = time(9, 0)
 HORA_CIERRE = time(22, 0)
+
+@app.get("/test-db")
+def test_db():
+    try:
+        conn = get_connection()
+        conn.close()
+        return {"status": "Conectado correctamente a PostgreSQL"}
+    except Exception as e:
+        return {"error": str(e)}
 
 # ======================================================
 # LISTAR BARBEROS POR BARBERIA
@@ -96,16 +79,17 @@ def listar_barberos(barberia_id: int):
 
         return [
             {
-                "barbero_id": r[0],
+                "id": r[0],
                 "nombre": r[1],
                 "horario_inicio": str(r[2]),
                 "horario_fin": str(r[3]),
-                "foto_url": r[4] # <-- Nueva línea
+                "foto_url": r[4]
             }
             for r in cursor.fetchall()
         ]
     finally:
         conn.close()
+
 # ======================================================
 # CREAR RESERVA (SaaS Multi-tenant)
 # ======================================================
@@ -119,111 +103,65 @@ def crear_reserva(
     fecha: str,
     hora: str
 ):
-
     conn = get_connection()
     try:
         cursor = conn.cursor()
 
-        hora_inicio = datetime.strptime(hora, "%H:%M").time()
+        # Validar horario de apertura
+        hora_obj = datetime.strptime(hora, "%H:%M").time()
+        if not (HORA_APERTURA <= hora_obj < HORA_CIERRE):
+            raise HTTPException(status_code=400, detail="La barbería está cerrada a esa hora")
 
-        if not (HORA_APERTURA <= hora_inicio < HORA_CIERRE):
-            raise HTTPException(
-                status_code=400,
-                detail="Horario fuera del rango permitido"
-            )
-
-        # Verificar si ya está ocupado
+        # Verificar si el barbero ya tiene cita en ese horario
         cursor.execute("""
             SELECT id FROM reservas
-            WHERE barberia_id = %s
-            AND barbero_id = %s
-            AND fecha = %s
-            AND hora = %s
+            WHERE barberia_id = %s AND barbero_id = %s AND fecha = %s AND hora = %s
         """, (barberia_id, barbero_id, fecha, hora))
 
         if cursor.fetchone():
-            raise HTTPException(
-                status_code=400,
-                detail="Horario ya ocupado"
-            )
+            raise HTTPException(status_code=400, detail="Este barbero ya tiene una cita a esa hora")
 
         # Insertar reserva
         cursor.execute("""
-            INSERT INTO reservas
-            (barberia_id, barbero_id, cliente_nombre, cliente_email, fecha, hora)
+            INSERT INTO reservas (barberia_id, barbero_id, cliente_nombre, cliente_email, fecha, hora)
             VALUES (%s, %s, %s, %s, %s, %s)
-        """, (
-            barberia_id,
-            barbero_id,
-            cliente_nombre,
-            cliente_email,
-            fecha,
-            hora
-        ))
-
+        """, (barberia_id, barbero_id, cliente_nombre, cliente_email, fecha, hora))
+        
         conn.commit()
 
-        # Obtener nombre del barbero
-        cursor.execute("""
-            SELECT nombre FROM barberos
-            WHERE id = %s
-        """, (barbero_id,))
-
+        # Obtener nombre del barbero para notificaciones
+        cursor.execute("SELECT nombre FROM barberos WHERE id = %s", (barbero_id,))
         profesional = cursor.fetchone()[0]
 
-        mensaje = (
-            f"Hola {cliente_nombre} 👋\n"
-            f"Tu reserva fue confirmada\n"
-            f"Barbero: {profesional}\n"
-            f"Fecha: {fecha}\n"
-            f"Hora: {hora}\n"
-            f"Te esperamos 💈"
-        )
+        # Enviar Email y Calendario
+        try:
+            email_sender.enviar_confirmacion(cliente_email, cliente_nombre, fecha, hora, profesional)
+            calendar_sender.crear_evento(cliente_email, cliente_nombre, fecha, hora, profesional)
+        except Exception as e:
+            print(f"⚠️ Error en notificaciones: {e}")
 
-        # WhatsApp
-        #if whatsapp:
-            # aquí deberías pedir teléfono si lo quieres usar
-         #   pass
-
-        # Email
-        email_sender.enviar_confirmacion(
-            cliente_email,
-            cliente_nombre,
-            fecha,
-            hora,
-            profesional
-        )
-
-        # Calendar
-        calendar_sender.crear_evento(
-            cliente_email,
-            cliente_nombre,
-            fecha,
-            hora,
-            profesional
-        )
-
-        return {"mensaje": "Reserva creada correctamente"}
+        return {"mensaje": "¡Reserva creada con éxito!"}
 
     finally:
         conn.close()
 
 # ======================================================
-# LISTAR RESERVAS POR BARBERIA
+# LISTAR RESERVAS POR BARBERIA (CON JOIN)
 # ======================================================
 
 @app.get("/reservas/{barberia_id}")
 def listar_reservas(barberia_id: int):
-
     conn = get_connection()
     try:
         cursor = conn.cursor()
-
+        # Hacemos JOIN con la tabla barberos para traer el nombre del barbero
         cursor.execute("""
-            SELECT cliente_nombre, cliente_email, fecha, hora
-            FROM reservas
-            WHERE barberia_id = %s
-            ORDER BY fecha, hora
+            SELECT r.cliente_nombre, r.cliente_email, r.fecha, r.hora, b.nombre
+            FROM reservas r
+            JOIN barberos b ON r.barbero_id = b.id
+            WHERE r.barberia_id = %s
+            ORDER BY r.fecha DESC, r.hora DESC
+            LIMIT 10
         """, (barberia_id,))
 
         return [
@@ -231,10 +169,10 @@ def listar_reservas(barberia_id: int):
                 "cliente": r[0],
                 "correo": r[1],
                 "fecha": str(r[2]),
-                "hora": str(r[3])
+                "hora": str(r[3]),
+                "profesional": r[4]
             }
             for r in cursor.fetchall()
         ]
-
     finally:
         conn.close()
