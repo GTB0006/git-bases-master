@@ -128,9 +128,9 @@ async function cargarProfesionales() {
         select.innerHTML = '<option value="">Selecciona un profesional</option>';
 
         data.forEach(p => {
-            profesionales[p.barbero_id] = p;
+            profesionales[p.id] = p;
             const opt = document.createElement("option");
-            opt.value = p.barbero_id;
+            opt.value = p.id;
             opt.textContent = p.nombre;
             select.appendChild(opt);
         });
