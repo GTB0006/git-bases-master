@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -50,7 +50,7 @@ def index():
     )
 
 # ======================================================
-# LISTAR BARBEROS (CORREGIDO PARA TU BASE DE DATOS)
+# LISTAR BARBEROS
 # ======================================================
 
 @app.get("/barberos/{barberia_id}")
@@ -66,16 +66,16 @@ def listar_barberos(barberia_id: int):
         cursor.execute(query, (barberia_id,))
         rows = cursor.fetchall()
         
-        resultado = []
-        for r in rows:
-            resultado.append({
+        return [
+            {
                 "id": r[0],
                 "nombre": r[1],
                 "horario_inicio": str(r[2]),
                 "horario_fin": str(r[3]),
                 "foto_url": r[4]
-            })
-        return resultado
+            }
+            for r in rows
+        ]
     except Exception as e:
         print(f"ERROR CRÍTICO: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -83,7 +83,18 @@ def listar_barberos(barberia_id: int):
         conn.close()
 
 # ======================================================
-# CREAR RESERVA (SaaS Multi-tenant)
+# FUNCIÓN AUXILIAR PARA NOTIFICACIONES (SEGUNDO PLANO)
+# ======================================================
+
+def enviar_notificaciones_task(email, nombre, fecha, hora, profesional):
+    try:
+        email_sender.enviar_confirmacion(email, nombre, fecha, hora, profesional)
+        calendar_sender.crear_evento(email, nombre, fecha, hora, profesional)
+    except Exception as e:
+        print(f"⚠️ Error en notificaciones en segundo plano: {e}")
+
+# ======================================================
+# CREAR RESERVA
 # ======================================================
 
 @app.post("/reservas")
@@ -93,7 +104,8 @@ def crear_reserva(
     cliente_nombre: str,
     cliente_email: str,
     fecha: str,
-    hora: str
+    hora: str,
+    background_tasks: BackgroundTasks  # Para que el correo no bloquee la web
 ):
     conn = get_connection()
     try:
@@ -104,7 +116,7 @@ def crear_reserva(
         if not (HORA_APERTURA <= hora_obj < HORA_CIERRE):
             raise HTTPException(status_code=400, detail="La barbería está cerrada a esa hora")
 
-        # Verificar si el barbero ya tiene cita en ese horario
+        # Verificar disponibilidad
         cursor.execute("""
             SELECT id FROM reservas
             WHERE barberia_id = %s AND barbero_id = %s AND fecha = %s AND hora = %s
@@ -121,16 +133,13 @@ def crear_reserva(
         
         conn.commit()
 
-        # Obtener nombre del barbero para notificaciones
+        # Obtener nombre del barbero
         cursor.execute("SELECT nombre FROM barberos WHERE id = %s", (barbero_id,))
-        profesional = cursor.fetchone()[0]
+        res = cursor.fetchone()
+        profesional = res[0] if res else "Profesional"
 
-        # Enviar Email y Calendario
-        try:
-            email_sender.enviar_confirmacion(cliente_email, cliente_nombre, fecha, hora, profesional)
-            calendar_sender.crear_evento(cliente_email, cliente_nombre, fecha, hora, profesional)
-        except Exception as e:
-            print(f"⚠️ Error en notificaciones: {e}")
+        # AGREGAR TAREA A SEGUNDO PLANO (El usuario no espera al correo)
+        background_tasks.add_task(enviar_notificaciones_task, cliente_email, cliente_nombre, fecha, hora, profesional)
 
         return {"mensaje": "¡Reserva creada con éxito!"}
 
@@ -141,7 +150,7 @@ def crear_reserva(
         conn.close()
 
 # ======================================================
-# LISTAR RESERVAS POR BARBERIA (CON JOIN)
+# LISTAR RESERVAS
 # ======================================================
 
 @app.get("/reservas/{barberia_id}")
