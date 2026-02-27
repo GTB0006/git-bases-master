@@ -6,27 +6,35 @@
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; }
         .gold-text { color: #c5a059; text-align: center; }
-        .filter-box { background: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; justify-content: center; }
+        .filter-box { background: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap; }
         table { width: 100%; border-collapse: collapse; background: #111; }
         th, td { padding: 12px; border: 1px solid #333; text-align: left; }
         th { background: #c5a059; color: #000; }
         .hidden { display: none; }
+        /* Estilo para el contador */
+        .contador-pendientes { background: #c5a059; color: #000; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
     </style>
 </head>
 <body>
     <h1 class="gold-text">Gestión de Citas</h1>
     
     <div class="filter-box">
-        <label>Filtrar por Fecha:</label>
-        <input type="date" id="filtro-fecha" onchange="filtrarTabla()" style="padding: 10px; border-radius: 5px;">
-        <button onclick="limpiarFiltro()" style="padding: 10px;">Ver Todas</button>
+        <div id="stats-container">
+            <span class="contador-pendientes" id="count-text">Calculando pendientes...</span>
+        </div>
+        <div>
+            <label>Filtrar por Fecha:</label>
+            <input type="date" id="filtro-fecha" onchange="filtrarTabla()" style="padding: 10px; border-radius: 5px; border: none;">
+            <button onclick="limpiarFiltro()" style="padding: 10px; cursor: pointer; background: #333; color: white; border: none; border-radius: 5px;">Ver Todas</button>
+        </div>
     </div>
 
-    <div id="status">Validando...</div>
+    <div id="status" style="text-align: center;">Validando acceso...</div>
 
     <table id="tabla-admin" class="hidden">
         <thead>
             <tr>
+                <th>ESTADO</th>
                 <th>CLIENTE</th>
                 <th>SERVICIO</th>
                 <th>BARBERO</th>
@@ -64,16 +72,51 @@
 
         function renderizarTabla(lista) {
             const tbody = document.getElementById('lista-reservas');
-            tbody.innerHTML = lista.map(r => `
-                <tr>
+            const countText = document.getElementById('count-text');
+            
+            // Obtener tiempo actual
+            const ahora = new Date();
+            const fechaHoy = ahora.toISOString().split('T')[0];
+            const horaActualNum = ahora.getHours() * 100 + ahora.getMinutes();
+
+            let pendientesHoy = 0;
+
+            tbody.innerHTML = lista.map(r => {
+                // Lógica de comparación de hora
+                const [h, m] = r.hora.split(':').map(Number);
+                const horaReservaNum = h * 100 + m;
+                
+                let estaPasada = false;
+                if (r.fecha < fechaHoy || (r.fecha === fechaHoy && horaReservaNum < horaActualNum)) {
+                    estaPasada = true;
+                }
+
+                // Contar pendientes de hoy (que no hayan pasado)
+                if (r.fecha === fechaHoy && !estaPasada) {
+                    pendientesHoy++;
+                }
+
+                // Definir estilos y etiquetas
+                const estiloFila = estaPasada ? 'style="color: #666; opacity: 0.6;"' : '';
+                const icono = estaPasada ? '✅' : '⏳';
+                const textoWa = estaPasada ? 'Finalizada' : 'Enviar Mensaje';
+                const colorWa = estaPasada ? '#444' : '#25d366';
+
+                return `
+                <tr ${estiloFila}>
+                    <td>${icono}</td>
                     <td>${r.cliente}</td>
                     <td>${r.servicio}</td>
                     <td>${r.barbero}</td>
                     <td>${r.fecha}</td>
                     <td><b>${r.hora}</b></td>
-                    <td><a href="https://wa.me/${r.telefono}" target="_blank" style="color:#25d366;">Enviar Mensaje</a></td>
+                    <td><a href="https://wa.me/${r.telefono}" target="_blank" style="color:${colorWa}; text-decoration: none;">${textoWa}</a></td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
+
+            // Actualizar el contador visual
+            countText.innerText = `Citas pendientes para hoy: ${pendientesHoy}`;
         }
 
         function filtrarTabla() {
