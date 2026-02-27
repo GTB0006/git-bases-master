@@ -73,11 +73,18 @@ def crear_reserva(
         if not (HORA_APERTURA <= hora_obj < HORA_CIERRE):
             raise HTTPException(status_code=400, detail="La barbería está cerrada")
 
-        # 2. Verificar disponibilidad
+        # 2. Verificar disponibilidad (Rango de 1 hora)
+        # Buscamos si existe alguna cita entre (hora solicitada - 59 min) y (hora solicitada + 59 min)
         cursor.execute("""
             SELECT id FROM reservas 
-            WHERE barberia_id = %s AND barbero_id = %s AND fecha = %s AND hora = %s
+            WHERE barberia_id = %s 
+            AND barbero_id = %s 
+            AND fecha = %s 
+            AND (hora::time, interval '1 hour') OVERLAPS (%s::time, interval '1 hour')
         """, (barberia_id, barbero_id, fecha, hora))
+        
+        if cursor.fetchone():
+            raise HTTPException(status_code=400, detail="El barbero ya tiene una cita en este rango de tiempo.")
         
         if cursor.fetchone():
             raise HTTPException(status_code=400, detail="Horario no disponible")
