@@ -253,57 +253,39 @@ def crear_reserva(
 # Reemplaza el endpoint de listar_reservas por este:
 
 @app.get("/reservas/{barberia_id}")
-
 def listar_reservas(barberia_id: int, token: str = None):
-
-    # Verificación de contraseña simple
-
     if token != "Blessed2026":
-
         raise HTTPException(status_code=401, detail="No autorizado")
 
-
-
     conn = get_connection()
-
     try:
-
         cursor = conn.cursor()
-
+        # Usamos COALESCE para evitar errores si hay campos NULL en la BD
         cursor.execute("""
-
-            SELECT r.cliente_nombre, r.servicio, r.fecha, r.hora, b.nombre, r.cliente_telefono
-
+            SELECT 
+                r.cliente_nombre, 
+                COALESCE(r.servicio, 'Sin servicio'), 
+                r.fecha, 
+                r.hora, 
+                b.nombre, 
+                COALESCE(r.cliente_telefono, '0')
             FROM reservas r
-
             JOIN barberos b ON r.barbero_id = b.id
-
             WHERE r.barberia_id = %s
-
-            ORDER BY r.fecha DESC, r.hora DESC LIMIT 30
-
+            ORDER BY r.fecha DESC, r.hora DESC 
+            LIMIT 50
         """, (barberia_id,))
-
+        
+        filas = cursor.fetchall()
         return [
-
             {
-
                 "cliente": r[0], 
-
                 "servicio": r[1], 
-
                 "fecha": str(r[2]), 
-
                 "hora": str(r[3]), 
-
                 "barbero": r[4],
-
                 "telefono": r[5]
-
-            } for r in cursor.fetchall()
-
+            } for r in filas
         ]
-
     finally:
-
         conn.close()
