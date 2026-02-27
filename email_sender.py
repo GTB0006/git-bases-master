@@ -7,7 +7,7 @@ class EmailSender:
     def __init__(self):
         # Usamos las variables de Render. Si no están, usamos los valores que pusiste
         self.email = os.getenv("EMAIL_USER", "blessedbarbershopenv@gmail.com")
-        self.password = os.getenv("EMAIL_PASSWORD", "dkkgsqhzizbyifyi").strip()
+        self.password = os.getenv("EMAIL_PASSWORD", "szpmoziwisyyodav").strip()
 
     def enviar_confirmacion(self, correo_cliente, nombre, fecha, hora, profesional):
         msg = EmailMessage()
