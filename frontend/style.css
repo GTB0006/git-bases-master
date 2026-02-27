@@ -1,5 +1,10 @@
 :root {
-    --bg-dark: #000; --card-bg: #1a1a1a; --gold: #c5a059; --text-white: #fff; --text-gray: #888; --border: #333;
+    --bg-dark: #000; 
+    --card-bg: #1a1a1a; 
+    --gold: #c5a059; 
+    --text-white: #fff; 
+    --text-gray: #888; 
+    --border: #333;
 }
 
 body { background-color: var(--bg-dark); color: var(--text-white); font-family: 'Arial', sans-serif; margin: 0; padding: 20px; }
@@ -12,11 +17,44 @@ header { text-align: center; margin-bottom: 30px; }
 .servicio-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
 .servicio-item .precio { color: var(--gold); font-weight: bold; }
 
-/* BARBEROS GRID */
-.barberos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 10px 0; }
-.barbero-card { background: #222; border: 2px solid transparent; padding: 10px; border-radius: 12px; text-align: center; cursor: pointer; }
-.barbero-card img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; }
-.barbero-card.selected { border-color: var(--gold); background: #2a2210; }
+/* BARBEROS GRID - DISEÑO CIRCULAR Y CENTRADO */
+.barberos-grid { 
+    display: flex; 
+    justify-content: center; 
+    gap: 20px; 
+    flex-wrap: wrap; 
+    margin: 20px 0; 
+}
+
+.barbero-card { 
+    background: transparent; 
+    padding: 10px; 
+    text-align: center; 
+    cursor: pointer; 
+    width: 110px; 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.barbero-card img { 
+    width: 80px; 
+    height: 80px; 
+    border-radius: 50%; 
+    object-fit: cover; 
+    border: 3px solid var(--border);
+    margin-bottom: 8px;
+    transition: 0.3s;
+}
+
+.barbero-card span {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--text-white);
+}
+
+.barbero-card.selected img { border-color: var(--gold); transform: scale(1.1); }
+.barbero-card.selected span { color: var(--gold); }
 
 /* FORM */
 .form-group { margin-bottom: 15px; }
@@ -24,13 +62,11 @@ label { display: block; color: var(--text-gray); font-size: 0.8rem; margin-botto
 input { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 8px; box-sizing: border-box; }
 .btn-agendar { width: 100%; padding: 15px; background: var(--gold); border: none; font-weight: bold; cursor: pointer; border-radius: 8px; }
 
-/* UBICACIÓN - LADO A LADO */
-.ubicacion-container { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
-.info-ubicacion { flex: 1; min-width: 200px; }
-.mapa-frame { flex: 1.5; min-width: 250px; border-radius: 15px; overflow: hidden; border: 1px solid var(--gold); }
+/* ADMIN TABLE */
+table { width: 100%; border-collapse: collapse; background: #111; margin-top: 10px; }
+th, td { padding: 12px; border: 1px solid #333; text-align: left; }
+th { background: var(--gold); color: #000; }
+tr[style*="color: #666"] td { border-color: #222; text-decoration: line-through rgba(255,255,255,0.1); }
 
-/* Estilo para filas pasadas en el admin */
-tr[style*="color: #666"] td {
-    border-color: #222;
-    text-decoration: line-through rgba(255,255,255,0.1); /* Tacha suavemente el texto */
-}
+/* UBICACIÓN */
+.mapa-frame { width: 100%; border-radius: 15px; overflow: hidden; border: 1px solid var(--gold); margin-top: 15px; }
