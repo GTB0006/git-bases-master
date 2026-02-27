@@ -1,48 +1,108 @@
-let servicioSeleccionado = "";
-
-function seleccionarServicio(nombre, precio) {
-    servicioSeleccionado = nombre;
-    
-    // Cambiar vista
-    document.getElementById('contenedor-servicios').style.display = 'none';
-    document.getElementById('formulario-datos').style.display = 'block';
-    
-    // Actualizar título del resumen
-    document.getElementById('resumen-servicio').innerText = nombre;
+:root {
+    --bg-dark: #000000;
+    --card-bg: #1a1a1a;
+    --gold: #c5a059;
+    --text-white: #ffffff;
+    --text-gray: #888888;
 }
 
-function volverAServicios() {
-    document.getElementById('contenedor-servicios').style.display = 'block';
-    document.getElementById('formulario-datos').style.display = 'none';
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-white);
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 20px;
 }
 
-async function agendarCita() {
-    const barberiaId = 1; // ID de tu barbería
-    const barberoId = document.getElementById('barbero_id').value;
-    const nombre = document.getElementById('cliente_nombre').value;
-    const email = document.getElementById('cliente_email').value;
-    const fecha = document.getElementById('fecha').value;
-    const hora = document.getElementById('hora').value;
+.container {
+    max-width: 500px;
+    margin: 0 auto;
+}
 
-    if (!nombre || !email || !fecha || !hora) {
-        alert("Por favor, completa todos los campos.");
-        return;
-    }
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
 
-    // Construir la URL con el nuevo campo 'servicio'
-    const url = `/reservas?barberia_id=${barberiaId}&barbero_id=${barberoId}&cliente_nombre=${encodeURIComponent(nombre)}&cliente_email=${encodeURIComponent(email)}&servicio=${encodeURIComponent(servicioSeleccionado)}&fecha=${fecha}&hora=${hora}`;
+.gold-text {
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
 
-    try {
-        const response = await fetch(url, { method: 'POST' });
-        const data = await response.json();
+.card-dark {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
 
-        if (response.ok) {
-            alert("✅ ¡Reserva exitosa! Revisa tu correo.");
-            location.reload(); // Recargar página
-        } else {
-            alert("❌ Error: " + data.detail);
-        }
-    } catch (error) {
-        alert("❌ Error de conexión con el servidor.");
-    }
+/* Estilos de la lista de servicios */
+.servicio-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+}
+
+.servicio-item:last-child { border-bottom: none; }
+
+.servicio-item .nombre {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.servicio-item .duracion {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+}
+
+.servicio-item .precio {
+    color: var(--gold);
+    font-weight: bold;
+}
+
+/* Estilos del formulario */
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-gray);
+}
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    background: #222;
+    border: 1px solid #444;
+    color: white;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.btn-agendar {
+    width: 100%;
+    padding: 15px;
+    background: var(--gold);
+    color: black;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.btn-volver {
+    background: none;
+    border: 1px solid var(--text-gray);
+    color: var(--text-gray);
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
 }
