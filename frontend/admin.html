@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Blessed Barbershop</title>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; padding: 20px; }
-        .gold-text { color: #c5a059; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #111; }
+        body { background-color: #000; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
+        .gold-text { color: #c5a059; text-transform: uppercase; letter-spacing: 2px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #111; display: none; } /* Oculta hasta validar */
         th, td { padding: 12px; border: 1px solid #333; text-align: left; font-size: 0.9rem; }
         th { background: #c5a059; color: #000; }
         .btn-refresh { background: #c5a059; padding: 10px 20px; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <h1 class="gold-text">Panel de Control - Reservas</h1>
-    <button class="btn-refresh" onclick="cargarReservas()">🔄 ACTUALIZAR LISTA</button>
+    <h1 class="gold-text">Panel de Control Privado</h1>
+    <div id="status-msg">Validando acceso...</div>
+    <button class="btn-refresh" id="btn-actualizar" style="display:none;" onclick="cargarReservas()">🔄 ACTUALIZAR LISTA</button>
 
-    <table>
+    <table id="tabla-datos">
         <thead>
             <tr>
                 <th>CLIENTE</th>
@@ -27,37 +28,52 @@
                 <th>FECHA / HORA</th>
             </tr>
         </thead>
-        <tbody id="lista-reservas">
-            </tbody>
+        <tbody id="lista-reservas"></tbody>
     </table>
 
     <script>
+        let password = "";
+
+        async function validarYEntrar() {
+            password = prompt("Introduce la contraseña de administrador:");
+            if (password === "Blessed2026") {
+                document.getElementById('status-msg').style.display = 'none';
+                document.getElementById('tabla-datos').style.display = 'table';
+                document.getElementById('btn-actualizar').style.display = 'inline-block';
+                cargarReservas();
+            } else {
+                alert("Contraseña incorrecta");
+                document.getElementById('status-msg').innerText = "Acceso Denegado";
+            }
+        }
+
         async function cargarReservas() {
             const tabla = document.getElementById('lista-reservas');
-            tabla.innerHTML = "<tr><td colspan='5'>Cargando reservas...</td></tr>";
-            
             try {
-                const response = await fetch('/reservas/1');
-                const data = await response.json();
+                // Enviamos el token en la URL
+                const response = await fetch(`/reservas/1?token=${password}`);
+                if (!response.ok) throw new Error("No autorizado");
                 
+                const data = await response.json();
                 tabla.innerHTML = "";
                 data.forEach(reserva => {
                     tabla.innerHTML += `
                         <tr>
                             <td>${reserva.cliente}</td>
-                            <td><a href="https://wa.me/${reserva.telefono}" style="color: #25d366; text-decoration: none;" target="_blank">WhatsApp: ${reserva.telefono}</a></td>
+                            <td><a href="https://wa.me/${reserva.telefono}" style="color: #25d366; text-decoration: none;" target="_blank">📲 ${reserva.telefono}</a></td>
                             <td>${reserva.servicio}</td>
                             <td>${reserva.barbero}</td>
-                            <td>${reserva.fecha} a las <b>${reserva.hora}</b></td>
+                            <td>${reserva.fecha} <br> <b>${reserva.hora}</b></td>
                         </tr>
                     `;
                 });
             } catch (error) {
-                tabla.innerHTML = "<tr><td colspan='5' style='color:red;'>Error al conectar con la base de datos</td></tr>";
+                alert("Error de sesión o clave incorrecta");
+                window.location.reload();
             }
         }
         
-        window.onload = cargarReservas;
+        window.onload = validarYEntrar;
     </script>
 </body>
 </html>
