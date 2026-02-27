@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Admin - Blessed Barbershop</title>
+    <link rel="stylesheet" href="/frontend/style.css">
+    <style>
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1a1a1a; }
+        th, td { padding: 12px; border: 1px solid #333; text-align: left; color: white; }
+        th { background: #c5a059; color: black; }
+        tr:nth-child(even) { background: #222; }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 800px;">
+        <h1 class="gold-text">Gestión de Reservas</h1>
+        <button onclick="cargarReservas()" class="btn-agendar" style="width: auto; padding: 10px 20px;">🔄 Actualizar Lista</button>
+        
+        <table id="tabla-reservas">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Teléfono</th>
+                    <th>Servicio</th>
+                    <th>Barbero</th>
+                    <th>Fecha/Hora</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function cargarReservas() {
+            try {
+                // Llamamos al endpoint que ya tienes en el main.py
+                const response = await fetch('/reservas/1'); 
+                const reservas = await response.json();
+                const tbody = document.querySelector('#tabla-reservas tbody');
+                tbody.innerHTML = "";
+
+                reservas.forEach(r => {
+                    const fila = `<tr>
+                        <td>${r.cliente}</td>
+                        <td>${r.telefono || 'N/A'}</td>
+                        <td>${r.servicio}</td>
+                        <td>${r.barbero}</td>
+                        <td>${r.fecha} <br> <b>${r.hora}</b></td>
+                    </tr>`;
+                    tbody.innerHTML += fila;
+                });
+            } catch (e) {
+                alert("Error al cargar reservas");
+            }
+        }
+        window.onload = cargarReservas;
+    </script>
+</body>
+</html>
