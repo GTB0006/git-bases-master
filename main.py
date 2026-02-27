@@ -124,8 +124,13 @@ def crear_reserva(
 # ======================================================
 # LISTAR RESERVAS (PARA EL ADMIN)
 # ======================================================
+# Reemplaza el endpoint de listar_reservas por este:
 @app.get("/reservas/{barberia_id}")
-def listar_reservas(barberia_id: int):
+def listar_reservas(barberia_id: int, token: str = None):
+    # Verificación de contraseña simple
+    if token != "Blessed2026":
+        raise HTTPException(status_code=401, detail="No autorizado")
+
     conn = get_connection()
     try:
         cursor = conn.cursor()
