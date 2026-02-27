@@ -20,12 +20,18 @@
     
     <div class="filter-box">
         <div id="stats-container">
-            <span class="contador-pendientes" id="count-text">Calculando pendientes...</span>
+            <span class="contador-pendientes" id="count-text">Calculando...</span>
         </div>
-        <div>
-            <label>Filtrar por Fecha:</label>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
             <input type="date" id="filtro-fecha" onchange="filtrarTabla()" style="padding: 10px; border-radius: 5px; border: none;">
-            <button onclick="limpiarFiltro()" style="padding: 10px; cursor: pointer; background: #333; color: white; border: none; border-radius: 5px;">Ver Todas</button>
+            
+            <select id="filtro-barbero" onchange="filtrarTabla()" style="padding: 10px; border-radius: 5px; border: none; background: white;">
+                <option value="">Todos los Barberos</option>
+                <option value="Juan Camilo">Juan Camilo</option>
+                <option value="Juan Sebastian">Juan Sebastian</option>
+            </select>
+
+            <button onclick="limpiarFiltro()" style="padding: 10px; cursor: pointer; background: #333; color: white; border: none; border-radius: 5px;">Limpiar</button>
         </div>
     </div>
 
