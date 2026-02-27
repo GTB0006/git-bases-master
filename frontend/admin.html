@@ -1,10 +1,9 @@
-admin index
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Admin - Blessed Barbershop</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/frontend/style.css">
 </head>
 <body style="background: #000; color: #fff; padding: 20px; font-family: sans-serif;">
     <h1 class="gold-text" style="text-align: center;">Gestión de Citas</h1>
@@ -23,21 +22,21 @@ admin index
         <button onclick="limpiarFiltro()" style="padding: 10px; background: #333; color: #fff; border: none; border-radius: 5px; cursor: pointer;">Limpiar</button>
     </div>
 
-    <div id="status" style="text-align: center;">Validando acceso...</div>
+    <div id="status" style="text-align: center; color: #c5a059;">Validando acceso...</div>
 
-    <table id="tabla-admin" style="display: none;">
+    <table id="tabla-admin" style="display: none; width: 100%; border-collapse: collapse;">
         <thead>
-            <tr>
-                <th>ESTADO</th>
-                <th>CLIENTE</th>
-                <th>SERVICIO</th>
-                <th>BARBERO</th>
-                <th>FECHA</th>
-                <th>HORA</th>
-                <th>WHATSAPP</th>
+            <tr style="background: #c5a059; color: #000;">
+                <th style="padding: 10px;">ESTADO</th>
+                <th style="padding: 10px;">CLIENTE</th>
+                <th style="padding: 10px;">SERVICIO</th>
+                <th style="padding: 10px;">BARBERO</th>
+                <th style="padding: 10px;">FECHA</th>
+                <th style="padding: 10px;">HORA</th>
+                <th style="padding: 10px;">WHATSAPP</th>
             </tr>
         </thead>
-        <tbody id="lista-reservas"></tbody>
+        <tbody id="lista-reservas" style="text-align: center;"></tbody>
     </table>
 
     <script>
@@ -47,7 +46,7 @@ admin index
         async function validar() {
             password = prompt("Clave de Admin:");
             if(password === "Blessed2026") {
-                document.getElementById('status').style.display = 'none';
+                document.getElementById('status').innerText = "Cargando citas...";
                 document.getElementById('tabla-admin').style.display = 'table';
                 await cargarDatos();
             } else {
@@ -58,49 +57,71 @@ admin index
 
         async function cargarDatos() {
             try {
+                // Hacemos la petición al backend
                 const res = await fetch(`/reservas/1?token=${password}`);
+                if(!res.ok) throw new Error("Error en respuesta");
+                
                 todasLasReservas = await res.json();
+                
+                document.getElementById('status').style.display = 'none';
                 renderizarTabla(todasLasReservas);
-            } catch(e) { alert("Error al cargar"); }
+            } catch(e) { 
+                console.error(e);
+                document.getElementById('status').innerText = "Error al conectar con el servidor";
+            }
         }
 
         function renderizarTabla(lista) {
             const tbody = document.getElementById('lista-reservas');
             const countText = document.getElementById('count-text');
-            const ahora = new Date();
-            const fechaHoy = ahora.toISOString().split('T')[0];
-            const horaActualNum = ahora.getHours() * 100 + ahora.getMinutes();
+            
+            // Obtenemos fecha de hoy en formato local (Colombia)
+            const hoy = new Date().toLocaleDateString('en-CA'); 
             let pendientesHoy = 0;
 
-            tbody.innerHTML = lista.map(r => {
-                const [h, m] = r.hora.split(':').map(Number);
-                const horaReservaNum = h * 100 + m;
-                let estaPasada = (r.fecha < fechaHoy || (r.fecha === fechaHoy && horaReservaNum < horaActualNum));
+            if (lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;">No hay citas registradas</td></tr>';
+                countText.innerText = "0 Citas";
+                return;
+            }
 
-                if (r.fecha === fechaHoy && !estaPasada) pendientesHoy++;
+            tbody.innerHTML = lista.map(r => {
+                // Comparamos fecha para el estado
+                const estaPasada = r.fecha < hoy;
+                if (r.fecha === hoy && !estaPasada) pendientesHoy++;
+
+                // Limpiamos el teléfono por si viene con espacios o es NULL
+                const telLink = r.telefono ? r.telefono.toString().replace(/\s+/g, '') : '';
 
                 const estiloFila = estaPasada ? 'style="color: #666; opacity: 0.6;"' : '';
+                
                 return `
-                <tr ${estiloFila}>
-                    <td>${estaPasada ? '✅' : '⏳'}</td>
-                    <td>${r.cliente}</td>
-                    <td>${r.servicio}</td>
+                <tr ${estiloFila} style="border-bottom: 1px solid #333;">
+                    <td style="padding: 12px;">${estaPasada ? '✅' : '⏳'}</td>
+                    <td>${r.cliente || 'Invitado'}</td>
+                    <td>${r.servicio || 'No especificado'}</td>
                     <td>${r.barbero}</td>
                     <td>${r.fecha}</td>
                     <td><b>${r.hora}</b></td>
-                    <td><a href="https://wa.me/${r.telefono}" target="_blank" style="color:${estaPasada ? '#444' : '#25d366'}; text-decoration:none;">${estaPasada ? 'Finalizada' : 'WhatsApp'}</a></td>
+                    <td>
+                        ${telLink !== '0' && telLink !== '' 
+                            ? `<a href="https://wa.me/${telLink}" target="_blank" style="color:#25d366; text-decoration:none; font-weight:bold;">WhatsApp</a>` 
+                            : '<span style="color:#666">Sin Tel</span>'}
+                    </td>
                 </tr>`;
             }).join('');
 
-            countText.innerText = `Citas pendientes hoy: ${pendientesHoy}`;
+            countText.innerText = `Citas hoy: ${pendientesHoy}`;
         }
 
         function filtrarTabla() {
             const f = document.getElementById('filtro-fecha').value;
             const b = document.getElementById('filtro-barbero').value;
             let filtradas = todasLasReservas;
+            
             if (f) filtradas = filtradas.filter(r => r.fecha === f);
             if (b) filtradas = filtradas.filter(r => r.barbero === b);
+            
             renderizarTabla(filtradas);
         }
 
@@ -109,6 +130,11 @@ admin index
             document.getElementById('filtro-barbero').value = "";
             renderizarTabla(todasLasReservas);
         }
+
+        window.onload = validar;
+    </script>
+</body>
+</html>
 
         window.onload = validar;
     </script>
