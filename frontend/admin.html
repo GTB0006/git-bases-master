@@ -2,30 +2,37 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Blessed Barbershop</title>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; padding: 20px; text-align: center; }
-        .gold-text { color: #c5a059; text-transform: uppercase; letter-spacing: 2px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #111; display: none; } /* Oculta hasta validar */
-        th, td { padding: 12px; border: 1px solid #333; text-align: left; font-size: 0.9rem; }
+        body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; }
+        .gold-text { color: #c5a059; text-align: center; }
+        .filter-box { background: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; justify-content: center; }
+        table { width: 100%; border-collapse: collapse; background: #111; }
+        th, td { padding: 12px; border: 1px solid #333; text-align: left; }
         th { background: #c5a059; color: #000; }
-        .btn-refresh { background: #c5a059; padding: 10px 20px; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; margin-bottom: 20px; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <h1 class="gold-text">Panel de Control Privado</h1>
-    <div id="status-msg">Validando acceso...</div>
-    <button class="btn-refresh" id="btn-actualizar" style="display:none;" onclick="cargarReservas()">🔄 ACTUALIZAR LISTA</button>
+    <h1 class="gold-text">Gestión de Citas</h1>
+    
+    <div class="filter-box">
+        <label>Filtrar por Fecha:</label>
+        <input type="date" id="filtro-fecha" onchange="filtrarTabla()" style="padding: 10px; border-radius: 5px;">
+        <button onclick="limpiarFiltro()" style="padding: 10px;">Ver Todas</button>
+    </div>
 
-    <table id="tabla-datos">
+    <div id="status">Validando...</div>
+
+    <table id="tabla-admin" class="hidden">
         <thead>
             <tr>
                 <th>CLIENTE</th>
-                <th>TELÉFONO</th>
                 <th>SERVICIO</th>
                 <th>BARBERO</th>
-                <th>FECHA / HORA</th>
+                <th>FECHA</th>
+                <th>HORA</th>
+                <th>WHATSAPP</th>
             </tr>
         </thead>
         <tbody id="lista-reservas"></tbody>
@@ -33,47 +40,55 @@
 
     <script>
         let password = "";
+        let todasLasReservas = [];
 
-        async function validarYEntrar() {
-            password = prompt("Introduce la contraseña de administrador:");
-            if (password === "Blessed2026") {
-                document.getElementById('status-msg').style.display = 'none';
-                document.getElementById('tabla-datos').style.display = 'table';
-                document.getElementById('btn-actualizar').style.display = 'inline-block';
-                cargarReservas();
+        async function validar() {
+            password = prompt("Clave de Admin:");
+            if(password === "Blessed2026") {
+                document.getElementById('status').classList.add('hidden');
+                document.getElementById('tabla-admin').classList.remove('hidden');
+                await cargarDatos();
             } else {
-                alert("Contraseña incorrecta");
-                document.getElementById('status-msg').innerText = "Acceso Denegado";
-            }
-        }
-
-        async function cargarReservas() {
-            const tabla = document.getElementById('lista-reservas');
-            try {
-                // Enviamos el token en la URL
-                const response = await fetch(`/reservas/1?token=${password}`);
-                if (!response.ok) throw new Error("No autorizado");
-                
-                const data = await response.json();
-                tabla.innerHTML = "";
-                data.forEach(reserva => {
-                    tabla.innerHTML += `
-                        <tr>
-                            <td>${reserva.cliente}</td>
-                            <td><a href="https://wa.me/${reserva.telefono}" style="color: #25d366; text-decoration: none;" target="_blank">📲 ${reserva.telefono}</a></td>
-                            <td>${reserva.servicio}</td>
-                            <td>${reserva.barbero}</td>
-                            <td>${reserva.fecha} <br> <b>${reserva.hora}</b></td>
-                        </tr>
-                    `;
-                });
-            } catch (error) {
-                alert("Error de sesión o clave incorrecta");
+                alert("Incorrecto");
                 window.location.reload();
             }
         }
-        
-        window.onload = validarYEntrar;
+
+        async function cargarDatos() {
+            try {
+                const res = await fetch(`/reservas/1?token=${password}`);
+                todasLasReservas = await res.json();
+                renderizarTabla(todasLasReservas);
+            } catch(e) { alert("Error al cargar"); }
+        }
+
+        function renderizarTabla(lista) {
+            const tbody = document.getElementById('lista-reservas');
+            tbody.innerHTML = lista.map(r => `
+                <tr>
+                    <td>${r.cliente}</td>
+                    <td>${r.servicio}</td>
+                    <td>${r.barbero}</td>
+                    <td>${r.fecha}</td>
+                    <td><b>${r.hora}</b></td>
+                    <td><a href="https://wa.me/${r.telefono}" target="_blank" style="color:#25d366;">Enviar Mensaje</a></td>
+                </tr>
+            `).join('');
+        }
+
+        function filtrarTabla() {
+            const fechaSeleccionada = document.getElementById('filtro-fecha').value;
+            if(!fechaSeleccionada) return;
+            const filtradas = todasLasReservas.filter(r => r.fecha === fechaSeleccionada);
+            renderizarTabla(filtradas);
+        }
+
+        function limpiarFiltro() {
+            document.getElementById('filtro-fecha').value = "";
+            renderizarTabla(todasLasReservas);
+        }
+
+        window.onload = validar;
     </script>
 </body>
 </html>
