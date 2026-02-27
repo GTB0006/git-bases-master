@@ -2,44 +2,48 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Blessed Barbershop</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/frontend/style.css">
 </head>
-<body style="background: #000; color: #fff; padding: 20px; font-family: sans-serif;">
+<body class="admin-body" style="padding: 20px;">
     <h1 class="gold-text" style="text-align: center;">Gestión de Citas</h1>
     
-    <div style="background: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap;">
-        <span id="count-text" style="background: #c5a059; color: #000; padding: 8px 15px; border-radius: 20px; font-weight: bold;">Calculando...</span>
+    <div class="card-dark" style="display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap;">
+        <span id="count-text" style="background: var(--gold); color: #000; padding: 8px 15px; border-radius: 20px; font-weight: bold;">Calculando...</span>
         
-        <input type="date" id="filtro-fecha" onchange="filtrarTabla()" style="padding: 10px; border-radius: 5px;">
+        <input type="date" id="filtro-fecha" onchange="filtrarTabla()">
         
-        <select id="filtro-barbero" onchange="filtrarTabla()" style="padding: 10px; border-radius: 5px;">
+        <select id="filtro-barbero" onchange="filtrarTabla()" style="padding: 10px; border-radius: 8px; background: #222; color: #fff; border: 1px solid #444;">
             <option value="">Todos los Barberos</option>
             <option value="Juan Camilo">Juan Camilo</option>
             <option value="Juan Sebastian">Juan Sebastian</option>
         </select>
 
-        <button onclick="limpiarFiltro()" style="padding: 10px; background: #333; color: #fff; border: none; border-radius: 5px; cursor: pointer;">Limpiar</button>
+        <button onclick="limpiarFiltro()" class="btn-volver" style="margin-bottom: 0;">Limpiar</button>
     </div>
 
-    <div id="status" style="text-align: center;">Validando acceso...</div>
+    <div id="status" style="text-align: center; color: var(--gold);">Validando acceso...</div>
 
-    <table id="tabla-admin" style="display: none;">
-        <thead>
-            <tr>
-                <th>ESTADO</th>
-                <th>CLIENTE</th>
-                <th>SERVICIO</th>
-                <th>BARBERO</th>
-                <th>FECHA</th>
-                <th>HORA</th>
-                <th>WHATSAPP</th>
-            </tr>
-        </thead>
-        <tbody id="lista-reservas"></tbody>
-    </table>
+    <div style="overflow-x: auto;">
+        <table id="tabla-admin" style="display: none;">
+            <thead>
+                <tr>
+                    <th>ESTADO</th>
+                    <th>CLIENTE</th>
+                    <th>SERVICIO</th>
+                    <th>BARBERO</th>
+                    <th>FECHA</th>
+                    <th>HORA</th>
+                    <th>WHATSAPP</th>
+                </tr>
+            </thead>
+            <tbody id="lista-reservas"></tbody>
+        </table>
+    </div>
 
     <script>
+        // ... (Tu código JavaScript actual está bien, solo asegúrate que la ruta del fetch sea correcta)
         let password = "";
         let todasLasReservas = [];
 
@@ -57,28 +61,37 @@
 
         async function cargarDatos() {
             try {
-                const res = await fetch(`/reservas/1?token=${password}`);
+                // Asegúrate que esta ruta coincida con tu backend en FastAPI
+                const res = await fetch(`/reservas?token=${password}`);
                 todasLasReservas = await res.json();
                 renderizarTabla(todasLasReservas);
-            } catch(e) { alert("Error al cargar"); }
+            } catch(e) { 
+                console.error(e);
+                alert("Error al cargar datos del servidor"); 
+            }
         }
 
         function renderizarTabla(lista) {
             const tbody = document.getElementById('lista-reservas');
             const countText = document.getElementById('count-text');
             const ahora = new Date();
-            const fechaHoy = ahora.toISOString().split('T')[0];
+            
+            // Ajuste para zona horaria local (Colombia)
+            const fechaHoy = ahora.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
             const horaActualNum = ahora.getHours() * 100 + ahora.getMinutes();
             let pendientesHoy = 0;
 
             tbody.innerHTML = lista.map(r => {
                 const [h, m] = r.hora.split(':').map(Number);
                 const horaReservaNum = h * 100 + m;
+                
+                // Lógica de estado
                 let estaPasada = (r.fecha < fechaHoy || (r.fecha === fechaHoy && horaReservaNum < horaActualNum));
 
                 if (r.fecha === fechaHoy && !estaPasada) pendientesHoy++;
 
                 const estiloFila = estaPasada ? 'style="color: #666; opacity: 0.6;"' : '';
+                
                 return `
                 <tr ${estiloFila}>
                     <td>${estaPasada ? '✅' : '⏳'}</td>
@@ -87,7 +100,12 @@
                     <td>${r.barbero}</td>
                     <td>${r.fecha}</td>
                     <td><b>${r.hora}</b></td>
-                    <td><a href="https://wa.me/${r.telefono}" target="_blank" style="color:${estaPasada ? '#444' : '#25d366'}; text-decoration:none;">${estaPasada ? 'Finalizada' : 'WhatsApp'}</a></td>
+                    <td>
+                        <a href="https://wa.me/${r.telefono}" target="_blank" 
+                           style="color:${estaPasada ? '#555' : '#25d366'}; font-weight: bold; text-decoration:none;">
+                           ${estaPasada ? 'Finalizada' : 'WhatsApp 💬'}
+                        </a>
+                    </td>
                 </tr>`;
             }).join('');
 
