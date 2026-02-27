@@ -22,7 +22,7 @@ app.add_middleware(
 )
 
 # ======================================================
-# INICIAR SERVICIOS Y CONFIGURACIÓN
+# INICIAR SERVICIOS
 # ======================================================
 
 email_sender = EmailSender()
@@ -77,24 +77,13 @@ def listar_barberos(barberia_id: int):
             for r in rows
         ]
     except Exception as e:
-        print(f"ERROR CRÍTICO: {str(e)}")
+        print(f"ERROR CRÍTICO DB: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
 
 # ======================================================
-# FUNCIÓN AUXILIAR PARA NOTIFICACIONES (SEGUNDO PLANO)
-# ======================================================
-
-def enviar_notificaciones_task(email, nombre, fecha, hora, profesional):
-    try:
-        email_sender.enviar_confirmacion(email, nombre, fecha, hora, profesional)
-        calendar_sender.crear_evento(email, nombre, fecha, hora, profesional)
-    except Exception as e:
-        print(f"⚠️ Error en notificaciones en segundo plano: {e}")
-
-# ======================================================
-# CREAR RESERVA
+# CREAR RESERVA (FORZANDO LOGS DE EMAIL)
 # ======================================================
 
 @app.post("/reservas")
@@ -105,27 +94,27 @@ def crear_reserva(
     cliente_email: str,
     fecha: str,
     hora: str,
-    background_tasks: BackgroundTasks  # Para que el correo no bloquee la web
+    background_tasks: BackgroundTasks
 ):
     conn = get_connection()
     try:
         cursor = conn.cursor()
 
-        # Validar horario de apertura
+        # 1. Validaciones de horario
         hora_obj = datetime.strptime(hora, "%H:%M").time()
         if not (HORA_APERTURA <= hora_obj < HORA_CIERRE):
-            raise HTTPException(status_code=400, detail="La barbería está cerrada a esa hora")
+            raise HTTPException(status_code=400, detail="La barbería está cerrada")
 
-        # Verificar disponibilidad
+        # 2. Verificar disponibilidad
         cursor.execute("""
             SELECT id FROM reservas
             WHERE barberia_id = %s AND barbero_id = %s AND fecha = %s AND hora = %s
         """, (barberia_id, barbero_id, fecha, hora))
 
         if cursor.fetchone():
-            raise HTTPException(status_code=400, detail="Este barbero ya tiene una cita a esa hora")
+            raise HTTPException(status_code=400, detail="Horario no disponible")
 
-        # Insertar reserva
+        # 3. Guardar en Base de Datos (Supabase)
         cursor.execute("""
             INSERT INTO reservas (barberia_id, barbero_id, cliente_nombre, cliente_email, fecha, hora)
             VALUES (%s, %s, %s, %s, %s, %s)
@@ -133,18 +122,26 @@ def crear_reserva(
         
         conn.commit()
 
-        # Obtener nombre del barbero
+        # 4. Obtener datos para notificaciones
         cursor.execute("SELECT nombre FROM barberos WHERE id = %s", (barbero_id,))
         res = cursor.fetchone()
-        profesional = res[0] if res else "Profesional"
+        profesional = res[0] if res else "Barbero"
 
-        # AGREGAR TAREA A SEGUNDO PLANO (El usuario no espera al correo)
-        background_tasks.add_task(enviar_notificaciones_task, cliente_email, cliente_nombre, fecha, hora, profesional)
+        # --- PRUEBA DE FUEGO: ENVÍO DIRECTO ---
+        print(f"--- Iniciando intento de envío de email para {cliente_email} ---")
+        try:
+            email_sender.enviar_confirmacion(cliente_email, cliente_nombre, fecha, hora, profesional)
+            print(f"✅ Email procesado en el flujo principal")
+        except Exception as e:
+            print(f"❌ Error capturado en main.py al enviar email: {e}")
+
+        # El calendario se queda en background porque ya vimos que sí funciona
+        background_tasks.add_task(calendar_sender.crear_evento, cliente_email, cliente_nombre, fecha, hora, profesional)
 
         return {"mensaje": "¡Reserva creada con éxito!"}
 
     except Exception as e:
-        print(f"ERROR AL RESERVAR: {str(e)}")
+        print(f"ERROR EN PROCESO DE RESERVA: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
