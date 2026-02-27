@@ -1,3 +1,6 @@
+
+admin.html
+
 <!DOCTYPE html>
 
 <html lang="es">
@@ -83,3 +86,184 @@
         </table>
 
     </div>
+
+
+
+    <script>
+
+        // ... (Tu código JavaScript actual está bien, solo asegúrate que la ruta del fetch sea correcta)
+
+        let password = "";
+
+        let todasLasReservas = [];
+
+
+
+        async function validar() {
+
+            password = prompt("Clave de Admin:");
+
+            if(password === "Blessed2026") {
+
+                document.getElementById('status').style.display = 'none';
+
+                document.getElementById('tabla-admin').style.display = 'table';
+
+                await cargarDatos();
+
+            } else {
+
+                alert("Incorrecto");
+
+                window.location.reload();
+
+            }
+
+        }
+
+
+
+        async function cargarDatos() {
+
+            try {
+
+                // Asegúrate que esta ruta coincida con tu backend en FastAPI
+
+                const res = await fetch(`/reservas?token=${password}`);
+
+                todasLasReservas = await res.json();
+
+                renderizarTabla(todasLasReservas);
+
+            } catch(e) { 
+
+                console.error(e);
+
+                alert("Error al cargar datos del servidor"); 
+
+            }
+
+        }
+
+
+
+        function renderizarTabla(lista) {
+
+            const tbody = document.getElementById('lista-reservas');
+
+            const countText = document.getElementById('count-text');
+
+            const ahora = new Date();
+
+            
+
+            // Ajuste para zona horaria local (Colombia)
+
+            const fechaHoy = ahora.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+
+            const horaActualNum = ahora.getHours() * 100 + ahora.getMinutes();
+
+            let pendientesHoy = 0;
+
+
+
+            tbody.innerHTML = lista.map(r => {
+
+                const [h, m] = r.hora.split(':').map(Number);
+
+                const horaReservaNum = h * 100 + m;
+
+                
+
+                // Lógica de estado
+
+                let estaPasada = (r.fecha < fechaHoy || (r.fecha === fechaHoy && horaReservaNum < horaActualNum));
+
+
+
+                if (r.fecha === fechaHoy && !estaPasada) pendientesHoy++;
+
+
+
+                const estiloFila = estaPasada ? 'style="color: #666; opacity: 0.6;"' : '';
+
+                
+
+                return `
+
+                <tr ${estiloFila}>
+
+                    <td>${estaPasada ? '✅' : '⏳'}</td>
+
+                    <td>${r.cliente}</td>
+
+                    <td>${r.servicio}</td>
+
+                    <td>${r.barbero}</td>
+
+                    <td>${r.fecha}</td>
+
+                    <td><b>${r.hora}</b></td>
+
+                    <td>
+
+                        <a href="https://wa.me/${r.telefono}" target="_blank" 
+
+                           style="color:${estaPasada ? '#555' : '#25d366'}; font-weight: bold; text-decoration:none;">
+
+                           ${estaPasada ? 'Finalizada' : 'WhatsApp 💬'}
+
+                        </a>
+
+                    </td>
+
+                </tr>`;
+
+            }).join('');
+
+
+
+            countText.innerText = `Citas pendientes hoy: ${pendientesHoy}`;
+
+        }
+
+
+
+        function filtrarTabla() {
+
+            const f = document.getElementById('filtro-fecha').value;
+
+            const b = document.getElementById('filtro-barbero').value;
+
+            let filtradas = todasLasReservas;
+
+            if (f) filtradas = filtradas.filter(r => r.fecha === f);
+
+            if (b) filtradas = filtradas.filter(r => r.barbero === b);
+
+            renderizarTabla(filtradas);
+
+        }
+
+
+
+        function limpiarFiltro() {
+
+            document.getElementById('filtro-fecha').value = "";
+
+            document.getElementById('filtro-barbero').value = "";
+
+            renderizarTabla(todasLasReservas);
+
+        }
+
+
+
+        window.onload = validar;
+
+    </script>
+
+</body>
+
+</html>
+
