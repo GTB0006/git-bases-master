@@ -1,49 +1,33 @@
 import os
-import smtplib
-import ssl
-from email.message import EmailMessage
+import resend
 
 class EmailSender:
     def __init__(self):
-        # Tomar variables de entorno o valores por defecto
-        self.email = os.environ.get("EMAIL_USER", "blessedbarbershopenv@gmail.com")
-        self.password = os.environ.get("EMAIL_PASSWORD", "szpmoziwisyyodav").strip()
+        # Configura tu API Key de Resend aquí o en Render Environment
+        resend.api_key = os.environ.get("RESEND_API_KEY", "re_Tb8AWwzR_Q5f6HQTnpNPLyKbi3hEaZ4CZ")
+        self.sender_email = "onboarding@resend.dev" # Luego puedes validar tu dominio
 
     def enviar_confirmacion(self, correo_cliente, nombre, fecha, hora, profesional):
-        if not self.password:
-            print("❌ ERROR: Contraseña no configurada")
-            return
-
-        msg = EmailMessage()
-        msg["Subject"] = "💈 Confirmación de tu Cita - Blessed Barbershop"
-        msg["From"] = self.email
-        msg["To"] = correo_cliente
-        
-        cuerpo = f"""
-Hola {nombre},
-
-¡Tu cita ha sido agendada con éxito!
-
-✂️ Barbero: {profesional}
-📅 Fecha: {fecha}
-⏰ Hora: {hora}
-
-¡Te esperamos!
-"""
-        msg.set_content(cuerpo)
-
         try:
-            # CAMBIO: Usamos SMTP estándar (587) en lugar de SSL directo
-            # Creamos un contexto de seguridad que ignora errores de validación de host si Render los da
-            context = ssl.create_default_context()
-            
-            print(f"Intentando conectar a smtp.gmail.com por el puerto 587...")
-            
-            with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as server:
-                server.starttls(context=context) # Inicia la encriptación
-                server.login(self.email, self.password)
-                server.send_message(msg)
-                
-            print(f"✅ Correo enviado con éxito a {correo_cliente}")
+            params = {
+                "from": f"Blessed Barbershop <{self.sender_email}>",
+                "to": [correo_cliente],
+                "subject": "💈 Cita Confirmada - Blessed Barbershop",
+                "html": f"""
+                <div style="font-family: sans-serif; border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: #333;">¡Hola {nombre}!</h2>
+                    <p>Tu cita ha sido agendada con éxito.</p>
+                    <hr>
+                    <p><strong>✂️ Barbero:</strong> {profesional}</p>
+                    <p><strong>📅 Fecha:</strong> {fecha}</p>
+                    <p><strong>⏰ Hora:</strong> {hora}</p>
+                    <hr>
+                    <p style="font-size: 0.8em; color: #666;">Te esperamos en Calle 38 sur 34-22 Envigado.</p>
+                </div>
+                """,
+            }
+
+            r = resend.Emails.send(params)
+            print(f"✅ Correo enviado vía API Resend: {r}")
         except Exception as e:
-            print(f"❌ Fallo al enviar correo: {str(e)}")
+            print(f"❌ Error con Resend: {str(e)}")
