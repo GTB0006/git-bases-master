@@ -200,6 +200,20 @@ tr[style*="color: #666"] td {
     margin-top: 15px; 
 }
 
+/* --- AGREGA ESTO AQUÍ --- */
+.info-ubicacion a {
+    text-decoration: none; /* Quita el subrayado azul por defecto */
+    color: inherit;       /* Mantiene el color blanco del texto */
+    transition: opacity 0.3s;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.info-ubicacion a:hover {
+    opacity: 0.8;
+    text-decoration: underline var(--gold); /* Subrayado dorado al pasar el mouse */
+}
+
 .text-gray { 
     color: var(--text-gray); 
 }
