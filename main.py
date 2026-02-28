@@ -52,7 +52,7 @@ calendar_sender = CalendarSender()
 
 HORA_APERTURA = time(9, 0)
 
-HORA_CIERRE = time(22, 0)
+HORA_CIERRE = time(20, 0)
 
 
 
