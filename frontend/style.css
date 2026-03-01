@@ -435,3 +435,9 @@ tr[style*="color: #666"] td {
     color: var(--text-gray); 
 
 }
+
+/* Estilo para filas pasadas en el admin */
+tr[style*="color: #666"] td {
+    border-color: #222;
+    text-decoration: line-through rgba(255,255,255,0.1); /* Tacha suavemente el texto */
+}
